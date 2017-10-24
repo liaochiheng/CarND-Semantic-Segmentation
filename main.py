@@ -56,8 +56,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :return: The Tensor for the last layer of output
     """
     # TODO: Implement function
-    output = tf.layers.conv2d( vgg_layer7_out, num_classes, 1, 1 ) # conv6
-    #output = tf.layers.conv2d( output, num_classes, 1, 1 ) # conv7?
+    # output = tf.layers.conv2d( vgg_layer7_out, num_classes, 1, 1 )
+
     output = tf.layers.conv2d_transpose( output, num_classes, 4, 2 )
     output = tf.add( output, vgg_layer4_out )
     output = tf.layers.conv2d_transpose( output, num_classes, 4, 2 )
@@ -78,12 +78,17 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     :return: Tuple of (logits, train_op, cross_entropy_loss)
     """
     # TODO: Implement function
-    return None, None, None
+    logits = tf.reshape( nn_last_layer, ( -1, num_classes ) )
+    cross_entropy_loss = tf.reduce_mean( tf.nn.softmax_cross_entropy_with_logits( logits, correct_label ) )
+    optimizer = tf.train.AdamOptimizer( learning_rate = learning_rate )
+    train_op = optimizer.minimize( cross_entropy_loss )
+
+    return logits, train_op, cross_entropy_loss
 tests.test_optimize(optimize)
 
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
-             correct_label, keep_prob, learning_rate):
+             correct_label, keep_prob, learning_rate, logits):
     """
     Train neural network and print out the loss during training.
     :param sess: TF Session
@@ -98,7 +103,39 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # TODO: Implement function
-    pass
+    print( 'Training ...')
+    for epoch in range( epochs ) :
+        print( 'Epoch {} ...'.format( epoch + 1 ) )
+
+        for batch_x, batch_y in get_batches_fn( batch_size ) :
+            sess.run( train_op, feed_dict = {
+                input_image: batch_x, correct_label: batch_y, keep_prob: 0.5, learning_rate: 0.001
+                } )
+
+        loss = sess.run( cross_entropy_loss, feed_dict = {
+            input_image: batch_x, correct_label: batch_y, keep_prob: 1.
+            } )
+
+        print( 'Loss = {:.3f}'.format( loss ) )
+
+        # Evaluate accuracy
+        total_accuracy = 0.0
+        num_samples = 0
+        correct_pred = tf.equal( tf.argmax( logits, 1 ), tf.argmax( correct_label, 1 ) )
+        accuracy_op = tf.reduce_mean( tf.cast( correct_pred, tf.float32 ) )
+        for batch_x, batch_y in get_batches_fn( batch_size ) :
+            accuracy = sess.run( accuracy_op, feed_dict = {
+                input_image: batch_x, correct_label: batch_y, keep_prob: 1.
+                } )
+            total_accuracy += accuracy * len( batch_x )
+            num_samples += len( batch_x )
+
+        print( 'Accuracy = {:.3f}'.format( total_accuracy / num_samples ) )
+        print()
+
+    # y = tf.placeholder(tf.int32, (None))
+    # one_hot_y = tf.one_hot(y, n_classes)
+    
 tests.test_train_nn(train_nn)
 
 
