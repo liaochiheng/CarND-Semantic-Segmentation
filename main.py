@@ -1,4 +1,5 @@
 import os.path
+import time
 import tensorflow as tf
 import helper
 import warnings
@@ -7,7 +8,7 @@ import project_tests as tests
 
 
 # Check TensorFlow Version
-assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 
+assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), \
     'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
 print('TensorFlow Version: {}'.format(tf.__version__))
 
@@ -58,12 +59,12 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     # TODO: Implement function
     # output = tf.layers.conv2d( vgg_layer7_out, num_classes, 1, 1 )
 
-    output = tf.layers.conv2d_transpose( output, num_classes, 4, 2 )
+    output = tf.layers.conv2d_transpose( vgg_layer7_out, 512, 4, 2, padding = 'same' )
     output = tf.add( output, vgg_layer4_out )
-    output = tf.layers.conv2d_transpose( output, num_classes, 4, 2 )
+    output = tf.layers.conv2d_transpose( output, 256, 4, 2, padding = 'same' )
     output = tf.add( output, vgg_layer3_out )
 
-    output = tf.layers.conv2d_transpose( output, num_classes, 16, 8 )
+    output = tf.layers.conv2d_transpose( output, num_classes, 16, 8, padding = 'same' )
     return output
 tests.test_layers(layers)
 
@@ -80,16 +81,20 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     # TODO: Implement function
     logits = tf.reshape( nn_last_layer, ( -1, num_classes ) )
     labels = tf.reshape( correct_label, ( -1, num_classes ) )
-    cross_entropy_loss = tf.reduce_mean( tf.nn.softmax_cross_entropy_with_logits( logits, labels ) )
+    cross_entropy_loss = tf.reduce_mean( tf.nn.softmax_cross_entropy_with_logits( \
+        logits = logits, labels = labels ) )
     optimizer = tf.train.AdamOptimizer( learning_rate = learning_rate )
     train_op = optimizer.minimize( cross_entropy_loss )
+
+    # correct_pred = tf.equal( tf.argmax( logits, 1 ), tf.argmax( labels, 1 ) )
+    # accuracy_op = tf.reduce_mean( tf.cast( correct_pred, tf.float32 ) )
 
     return logits, train_op, cross_entropy_loss
 tests.test_optimize(optimize)
 
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
-             correct_label, keep_prob, learning_rate, logits):
+             correct_label, keep_prob, learning_rate):
     """
     Train neural network and print out the loss during training.
     :param sess: TF Session
@@ -104,7 +109,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # TODO: Implement function
-    print( 'Training ...')
+    print( 'Training ...\n')
     for epoch in range( epochs ) :
         print( 'Epoch {} ...'.format( epoch + 1 ) )
 
@@ -117,26 +122,20 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             input_image: batch_x, correct_label: batch_y, keep_prob: 1.
             } )
 
-        print( 'Loss = {:.3f}'.format( loss ) )
+        print( 'Loss = {:.3f}\n'.format( loss ) )
 
-        # Evaluate accuracy
-        total_accuracy = 0.0
-        num_samples = 0
-        correct_pred = tf.equal( tf.argmax( logits, 1 ), tf.argmax( correct_label, 1 ) )
-        accuracy_op = tf.reduce_mean( tf.cast( correct_pred, tf.float32 ) )
-        for batch_x, batch_y in get_batches_fn( batch_size ) :
-            accuracy = sess.run( accuracy_op, feed_dict = {
-                input_image: batch_x, correct_label: batch_y, keep_prob: 1.
-                } )
-            total_accuracy += accuracy * len( batch_x )
-            num_samples += len( batch_x )
+        # # Evaluate accuracy
+        # total_accuracy = 0.0
+        # num_samples = 0
+        # for batch_x, batch_y in get_batches_fn( batch_size ) :
+        #     accuracy = sess.run( accuracy_op, feed_dict = {
+        #         input_image: batch_x, correct_label: batch_y, keep_prob: 1.
+        #         } )
+        #     total_accuracy += accuracy * len( batch_x )
+        #     num_samples += len( batch_x )
 
-        print( 'Accuracy = {:.3f}'.format( total_accuracy / num_samples ) )
-        print()
+        # print( 'Accuracy = {:.3f}\n'.format( total_accuracy / num_samples ) )
 
-    # y = tf.placeholder(tf.int32, (None))
-    # one_hot_y = tf.one_hot(y, n_classes)
-    
 tests.test_train_nn(train_nn)
 
 
@@ -164,16 +163,8 @@ def run():
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
         # TODO: Build NN using load_vgg, layers, and optimize function
-        input_image, keep_prob, layer3_out, layer4_out, layer7_out = 
+        input_image, keep_prob, layer3_out, layer4_out, layer7_out = \
             load_vgg( sess, os.path.join( data_dir, 'vgg' ) )
-
-        # ===== test ======
-        g = sess.get_default_graph()
-        ops = g.get_operations()
-        print('======> ops:')
-        for op in ops:
-            print( 'OP - {0}: {1}'.format( op.name, op ) )
-        # ===== test end =======
 
         output = layers( layer3_out, layer4_out, layer7_out, num_classes )
 
@@ -182,18 +173,21 @@ def run():
         logits, train_op, cross_entropy_loss = optimize( output, correct_label, learning_rate, num_classes )
 
         # TODO: Train NN using the train_nn function
-        epochs = 30
-        batch_size = 50
+        epochs = 50
+        batch_size = 20
 
+        sess.run( tf.global_variables_initializer() )
+
+        time_start = time.time()
         train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
-             correct_label, keep_prob, learning_rate, logits)
+             correct_label, keep_prob, learning_rate)
+        print( 'Train time use {:.3f}s'.format( time.time() - time_start ) )
 
         # TODO: Save inference data using helper.save_inference_samples
         #  helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
-
 
 if __name__ == '__main__':
     run()
