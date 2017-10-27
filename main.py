@@ -60,23 +60,23 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     # TODO: Implement function
     conv_1x1 = tf.layers.conv2d( vgg_layer7_out, num_classes, 1, padding = 'same', 
                 kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
-                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
+                kernel_initializer = tf.truncated_normal_initializer( stddev = 1e-5 ) )
 
     output = tf.layers.conv2d_transpose( conv_1x1, 512, 4, 2, padding = 'same', 
                 kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
-                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
+                kernel_initializer = tf.zeros_initializer() )
 
     output = tf.add( output, vgg_layer4_out )
 
     output = tf.layers.conv2d_transpose( output, 256, 4, 2, padding = 'same', 
                 kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
-                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
+                kernel_initializer = tf.zeros_initializer() )
 
     output = tf.add( output, vgg_layer3_out )
 
     output = tf.layers.conv2d_transpose( output, num_classes, 16, 8, padding = 'same', 
                 kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
-                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
+                kernel_initializer = tf.zeros_initializer() )
 
     return output
 tests.test_layers(layers)
@@ -128,7 +128,8 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
 
         for batch_x, batch_y in get_batches_fn( batch_size ) :
             sess.run( train_op, feed_dict = {
-                input_image: batch_x, correct_label: batch_y, keep_prob: 0.5, learning_rate: 1e-4
+                input_image: batch_x, correct_label: batch_y, keep_prob: 0.5, \
+                learning_rate: 1e-5
                 } )
 
         loss = sess.run( cross_entropy_loss, feed_dict = {
@@ -189,8 +190,8 @@ def run():
         logits, train_op, cross_entropy_loss = optimize( output, correct_label, learning_rate, num_classes )
 
         # TODO: Train NN using the train_nn function
-        epochs = 15
-        batch_size = 6
+        epochs = 30
+        batch_size = 4
 
         sess.run( tf.global_variables_initializer() )
 
@@ -208,25 +209,14 @@ def run():
 
         # OPTIONAL: Apply the trained model to a video
 
-def produce_vedio():
-    images_path = './images'
-    video_file = './vedio.mp4'
+# def produce_vedio():
+#     images_path = './images'
+#     video_file = './vedio.mp4'
 
-    fps = 30
-    print( "Creating video {}, FPS={}".format( video_file, fps ) )
-    clip = ImageSequenceClip( images_path, fps = fps )
-    clip.write_videofile( video_file )
+#     fps = 30
+#     print( "Creating video {}, FPS={}".format( video_file, fps ) )
+#     clip = ImageSequenceClip( images_path, fps = fps )
+#     clip.write_videofile( video_file )
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser( description = 'Train nn or Create driving video.' )
-    parser.add_argument(
-        'op',
-        type=str,
-        default='train',
-        help='Operation, one of [train, vedio]'
-    )
-    args = parser.parse_args()
-    if args.op == 'train' :
-        run()
-    else :
-        produce_vedio()
+    run()

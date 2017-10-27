@@ -178,7 +178,7 @@ def gen_batch_function_3(data_folder, image_shape):
                 gt_road2 = np.all( gt_image == road2_color, axis = 2 )
                 gt_road2 = gt_road2.reshape( *gt_road2.shape, 1 )
 
-                gt_road = np.all( gt_image != background_color && gt_image != road2_color, axis = 2 )
+                gt_road = np.all( gt_image != background_color and gt_image != road2_color, axis = 2 )
                 gt_road = gt_road.reshape( *gt_road.shape, 1 )
 
                 gt_image = np.concatenate((gt_bg, gt_road, gt_road2), axis=2)
