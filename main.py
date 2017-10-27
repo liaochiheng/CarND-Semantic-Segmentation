@@ -57,14 +57,26 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :return: The Tensor for the last layer of output
     """
     # TODO: Implement function
-    # output = tf.layers.conv2d( vgg_layer7_out, num_classes, 1, 1 )
+    conv_1x1 = tf.layers.conv2d( vgg_layer7_out, num_classes, 1, padding = 'same', 
+                kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
+                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
 
-    output = tf.layers.conv2d_transpose( vgg_layer7_out, 512, 4, 2, padding = 'same' )
+    output = tf.layers.conv2d_transpose( conv_1x1, 512, 4, 2, padding = 'same', 
+                kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
+                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
+
     output = tf.add( output, vgg_layer4_out )
-    output = tf.layers.conv2d_transpose( output, 256, 4, 2, padding = 'same' )
+
+    output = tf.layers.conv2d_transpose( output, 256, 4, 2, padding = 'same', 
+                kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
+                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
+
     output = tf.add( output, vgg_layer3_out )
 
-    output = tf.layers.conv2d_transpose( output, num_classes, 16, 8, padding = 'same' )
+    output = tf.layers.conv2d_transpose( output, num_classes, 16, 8, padding = 'same', 
+                kernel_regularizer = tf.contrib.layers.l2_regularizer( 1e-3 ),
+                kernel_initializer = tf.truncated_normal_initializer( stddev = 0.01 ) )
+
     return output
 tests.test_layers(layers)
 
@@ -115,7 +127,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
 
         for batch_x, batch_y in get_batches_fn( batch_size ) :
             sess.run( train_op, feed_dict = {
-                input_image: batch_x, correct_label: batch_y, keep_prob: 0.5, learning_rate: 0.001
+                input_image: batch_x, correct_label: batch_y, keep_prob: 0.5, learning_rate: 1e-4
                 } )
 
         loss = sess.run( cross_entropy_loss, feed_dict = {
@@ -157,7 +169,10 @@ def run():
         # Path to vgg model
         vgg_path = os.path.join(data_dir, 'vgg')
         # Create function to get batches
-        get_batches_fn = helper.gen_batch_function(os.path.join(data_dir, 'data_road/training'), image_shape)
+        if num_classes == 2 :
+            get_batches_fn = helper.gen_batch_function(os.path.join(data_dir, 'data_road/training'), image_shape)
+        else :
+            get_batches_fn = helper.gen_batch_function_3(os.path.join(data_dir, 'data_road/training'), image_shape)
 
         # OPTIONAL: Augment Images for better results
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
@@ -168,13 +183,13 @@ def run():
 
         output = layers( layer3_out, layer4_out, layer7_out, num_classes )
 
-        correct_label = tf.placeholder( tf.int32, shape = ( None, *image_shape, num_classes ) )
+        correct_label = tf.placeholder( tf.int32, shape = ( None, None, None, num_classes ) )
         learning_rate = tf.placeholder( tf.float32 )
         logits, train_op, cross_entropy_loss = optimize( output, correct_label, learning_rate, num_classes )
 
         # TODO: Train NN using the train_nn function
-        epochs = 50
-        batch_size = 20
+        epochs = 15
+        batch_size = 6
 
         sess.run( tf.global_variables_initializer() )
 
@@ -185,7 +200,10 @@ def run():
 
         # TODO: Save inference data using helper.save_inference_samples
         #  helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
-        helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        if num_classes == 2 :
+            helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        else :
+            helper.save_inference_samples_3(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
 
