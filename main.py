@@ -5,7 +5,8 @@ import helper
 import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
-
+from moviepy.editor import ImageSequenceClip
+import argparse
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), \
@@ -207,5 +208,25 @@ def run():
 
         # OPTIONAL: Apply the trained model to a video
 
+def produce_vedio():
+    images_path = './images'
+    video_file = './vedio.mp4'
+
+    fps = 30
+    print( "Creating video {}, FPS={}".format( video_file, fps ) )
+    clip = ImageSequenceClip( images_path, fps = fps )
+    clip.write_videofile( video_file )
+
 if __name__ == '__main__':
-    run()
+    parser = argparse.ArgumentParser( description = 'Train nn or Create driving video.' )
+    parser.add_argument(
+        'op',
+        type=str,
+        default='train',
+        help='Operation, one of [train, vedio]'
+    )
+    args = parser.parse_args()
+    if args.op == 'train' :
+        run()
+    else :
+        produce_vedio()
