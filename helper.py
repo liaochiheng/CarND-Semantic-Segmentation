@@ -160,6 +160,7 @@ def gen_batch_function_3(data_folder, image_shape):
             re.sub(r'_(lane|road)_', '_', os.path.basename(path)): path
             for path in glob(os.path.join(data_folder, 'gt_image_2', '*_road_*.png'))}
         background_color = np.array([255, 0, 0])
+        road_color = np.array( [255, 0, 255] )
         road2_color = np.array( [0, 0, 0] )
 
         random.shuffle(image_paths)
@@ -175,11 +176,11 @@ def gen_batch_function_3(data_folder, image_shape):
                 gt_bg = np.all(gt_image == background_color, axis=2)
                 gt_bg = gt_bg.reshape(*gt_bg.shape, 1)
 
+                gt_road = np.all( gt_image == road_color, axis = 2 )
+                gt_road = gt_road.reshape( *gt_road.shape, 1 )
+
                 gt_road2 = np.all( gt_image == road2_color, axis = 2 )
                 gt_road2 = gt_road2.reshape( *gt_road2.shape, 1 )
-
-                gt_road = np.all( gt_image != background_color and gt_image != road2_color, axis = 2 )
-                gt_road = gt_road.reshape( *gt_road.shape, 1 )
 
                 gt_image = np.concatenate((gt_bg, gt_road, gt_road2), axis=2)
 
